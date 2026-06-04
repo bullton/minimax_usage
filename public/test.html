@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniMax 用量监控</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a2e; color: #fff; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; }
+        .card { background: rgba(255,255,255,0.1); padding: 20px; margin: 10px 0; border-radius: 8px; }
+        .label { color: #888; font-size: 14px; }
+        .value { font-size: 24px; font-weight: bold; margin: 5px 0; }
+        .error { background: rgba(239,68,68,0.2); padding: 10px; border-radius: 8px; color: #fca5a5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MiniMax Token Plan 用量监控</h1>
+        <div id="error" class="error" style="display:none"></div>
+        <div id="data"></div>
+    </div>
+    <script>
+        function render(data) {
+            if (!data.success) {
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = '错误: ' + (data.error || '获取失败');
+                return;
+            }
+            
+            const c = data.current;
+            const t = data.totals || {};
+            const r = data.raw || {};
+            
+            const fivePct = t.fiveHour > 0 ? (c.fiveHour / t.fiveHour * 100).toFixed(1) : '0';
+            const weekPct = t.weekly > 0 ? (c.weekly / t.weekly * 100).toFixed(1) : '0';
+            
+            let html = '';
+            html += '<div class="card"><div class="label">5小时窗口</div><div class="value">' + fivePct + '%</div></div>';
+            html += '<div class="card"><div class="label">周用量</div><div class="value">' + weekPct + '%</div></div>';
+            html += '<div class="card"><div class="label">日用量(估算)</div><div class="value">' + formatNum(c.daily) + '</div></div>';
+            html += '<div class="card"><div class="label">月度用量(估算)</div><div class="value">' + formatNum(c.monthly) + '</div></div>';
+            html += '<div class="card"><div class="label">状态</div><div class="value" style="color:#10b981">实时连接中</div></div>';
+            html += '<div class="card"><div class="label">最后更新</div><div class="value">' + new Date(data.timestamp).toLocaleString('zh-CN') + '</div></div>';
+            
+            document.getElementById('data').innerHTML = html;
+        }
+        
+        function formatNum(n) {
+            if (n >= 1000000000) return (n/1000000000).toFixed(2) + 'B';
+            if (n >= 1000000) return (n/1000000).toFixed(2) + 'M';
+            if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+            return n.toString();
+        }
+        
+        fetch('/api/usage')
+            .then(r => r.json())
+            .then(d => {
+                console.log('Got data:', d);
+                render(d);
+            })
+            .catch(e => {
+                console.error('Error:', e);
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = '连接失败: ' + e.message;
+            });
+    </script>
+</body>
+</html>

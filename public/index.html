@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniMax Token Plan 用量监控</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0d1117 100%);
+            min-height: 100vh;
+            color: #00ff88;
+            padding: 20px;
+        }
+        .cockpit {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: radial-gradient(ellipse at center, #1a2a1a 0%, #0a0a0a 70%);
+            border: 3px solid #333;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 0 50px rgba(0, 255, 136, 0.1), inset 0 0 100px rgba(0, 0, 0, 0.5);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #00ff88;
+            padding-bottom: 20px;
+        }
+        h1 {
+            font-size: 28px;
+            text-transform: uppercase;
+            letter-spacing: 8px;
+            text-shadow: 0 0 10px #00ff88, 0 0 20px #00ff88;
+            color: #00ff88;
+        }
+        .timestamp {
+            color: #ffaa00;
+            font-size: 12px;
+            margin-top: 10px;
+            letter-spacing: 2px;
+        }
+        .gauges {
+            display: flex;
+            justify-content: center;
+            gap: 100px;
+            margin-bottom: 50px;
+        }
+        .gauge {
+            width: 280px;
+            height: 280px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .gauge-title {
+            position: absolute;
+            top: 55px;
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        .gauge-value {
+            font-size: 52px;
+            font-weight: bold;
+            text-shadow: 0 0 20px currentColor;
+            color: #00ff88;
+            z-index: 1;
+        }
+        .gauge-value.week { color: #ffaa00; }
+        .gauge-unit {
+            font-size: 14px;
+            color: #888;
+            margin-top: 5px;
+        }
+        .gauge-reset {
+            position: absolute;
+            bottom: 55px;
+            font-size: 13px;
+            color: #00d4ff;
+            text-align: center;
+        }
+        
+        .panel {
+            background: linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 100%);
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.1);
+        }
+        .panel-title {
+            color: #ffaa00;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .progress-container { margin-bottom: 15px; }
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        .progress-bar {
+            height: 8px;
+            background: #1a1a1a;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .fill-5h { background: linear-gradient(90deg, #00ff88, #00cc6a); box-shadow: 0 0 10px #00ff88; }
+        .fill-week { background: linear-gradient(90deg, #ffaa00, #ff8800); box-shadow: 0 0 10px #ffaa00; }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #0a0a0a;
+            border-radius: 5px;
+            border: 1px solid #333;
+        }
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+        .status-indicator.online { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
+        .status-indicator.offline { background: #ff4444; box-shadow: 0 0 10px #ff4444; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        .pie-section { margin-top: 20px; }
+        .pie-container {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .pie-chart {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .pie-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #0a0a0a;
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #00ff88;
+            text-align: center;
+            border: 2px solid #333;
+        }
+        .pie-legend { flex: 1; min-width: 250px; }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-bottom: 1px solid #222;
+        }
+        .legend-item:last-child { border-bottom: none; }
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            box-shadow: 0 0 8px currentColor;
+        }
+        .legend-label { flex: 1; font-size: 13px; color: #ccc; }
+        .legend-value { font-weight: bold; color: #00ff88; font-size: 14px; }
+        .legend-percent { color: #ffaa00; font-size: 12px; width: 55px; text-align: right; }
+        
+        .refresh-btn {
+            background: linear-gradient(145deg, #1a3a1a, #0d2d0d);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            padding: 14px 35px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            transition: all 0.3s;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+        .refresh-btn:hover {
+            background: linear-gradient(145deg, #2a4a2a, #1a3a1a);
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.5);
+        }
+        .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 15px;
+            background: #0a0a0a;
+            border-radius: 5px;
+            border: 1px solid #222;
+        }
+        .detail-item.m3 { border-color: #00ff88; }
+        .detail-label { color: #888; font-size: 12px; }
+        .detail-value { color: #00d4ff; font-weight: bold; font-size: 14px; }
+        .detail-value.m3 { color: #00ff88; }
+        
+        .note {
+            text-align: center;
+            color: #444;
+            font-size: 10px;
+            margin-top: 20px;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div class="cockpit">
+        <div class="header">
+            <h1>Token Plan Monitor</h1>
+            <div class="timestamp" id="timestamp">INITIALIZING...</div>
+        </div>
+        
+        <div class="gauges">
+            <div class="gauge">
+                <svg class="gauge-svg" viewBox="0 0 200 200" style="position:absolute;width:100%;height:100%;">
+                    <circle cx="100" cy="100" r="85" fill="none" stroke="#1a1a1a" stroke-width="12"/>
+                    <circle id="gauge-ring-5h" cx="100" cy="100" r="85" fill="none" stroke="#00ff88" stroke-width="12" 
+                        stroke-dasharray="0 534" stroke-linecap="round" 
+                        transform="rotate(-90 100 100)" style="filter: drop-shadow(0 0 8px #00ff88);"/>
+                </svg>
+                <div class="gauge-title">5H Window</div>
+                <div class="gauge-value" id="gauge-5h">--%</div>
+                <div class="gauge-unit">USED</div>
+                <div class="gauge-reset" id="reset-5h">--</div>
+            </div>
+            <div class="gauge">
+                <svg class="gauge-svg" viewBox="0 0 200 200" style="position:absolute;width:100%;height:100%;">
+                    <circle cx="100" cy="100" r="85" fill="none" stroke="#1a1a1a" stroke-width="12"/>
+                    <circle id="gauge-ring-week" cx="100" cy="100" r="85" fill="none" stroke="#ffaa00" stroke-width="12" 
+                        stroke-dasharray="0 534" stroke-linecap="round" 
+                        transform="rotate(-90 100 100)" style="filter: drop-shadow(0 0 8px #ffaa00);"/>
+                </svg>
+                <div class="gauge-title">Weekly</div>
+                <div class="gauge-value week" id="gauge-week">--%</div>
+                <div class="gauge-unit">USED</div>
+                <div class="gauge-reset" id="reset-week">--</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Remaining Quota</div>
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>5H Window</span>
+                    <span id="pct-5h">--%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill fill-5h" id="bar-5h" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>Weekly</span>
+                    <span id="pct-week">--%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill fill-week" id="bar-week" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="status-bar">
+                <div class="status-indicator online" id="status-indicator"></div>
+                <span id="status-text">SYSTEM ONLINE</span>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Monthly Usage Detail (Manual Refresh)</div>
+            <button class="refresh-btn" id="refresh-detail" onclick="fetchDetail()">[ REFRESH DATA ]</button>
+            <div id="detail-time" style="color:#666;font-size:11px;margin-top:10px;">AWAITING INPUT...</div>
+            
+            <div class="detail-grid">
+                <div class="detail-item m3">
+                    <span class="detail-label">M3 Daily</span>
+                    <span class="detail-value m3" id="detail-daily-m3">--</span>
+                </div>
+                <div class="detail-item m3">
+                    <span class="detail-label">M3 Weekly</span>
+                    <span class="detail-value m3" id="detail-week-m3">--</span>
+                </div>
+                <div class="detail-item m3">
+                    <span class="detail-label">M3 Monthly</span>
+                    <span class="detail-value m3" id="detail-month-m3">--</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">All Daily</span>
+                    <span class="detail-value" id="detail-daily-all">--</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">All Weekly</span>
+                    <span class="detail-value" id="detail-week-all">--</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">All Monthly</span>
+                    <span class="detail-value" id="detail-month-all">--</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel pie-section">
+            <div class="panel-title">Model Distribution</div>
+            <div class="pie-container">
+                <div class="pie-chart" id="pie-chart">
+                    <div class="pie-center" id="pie-center">TOTAL<br/>--</div>
+                </div>
+                <div class="pie-legend" id="pie-legend"></div>
+            </div>
+        </div>
+
+        <div class="note">MINIMAX TOKEN PLAN SYSTEM v1.0 | AUTO-REFRESH: 10s</div>
+    </div>
+
+    <script>
+        var fiveHourResetTime = null;
+        var weekResetTime = null;
+        
+        var circumference = 2 * Math.PI * 85;
+
+        function formatCountdown(targetTime) {
+            var now = new Date();
+            var diff = targetTime - now;
+            if (diff <= 0) return 'RESET';
+            
+            var days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            var hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            var minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            var seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            if (days > 0) {
+                return days + 'd ' + hours + 'h ' + minutes + 'm ' + seconds + 's';
+            } else if (hours > 0) {
+                return hours + 'h ' + minutes + 'm ' + seconds + 's';
+            } else if (minutes > 0) {
+                return minutes + 'm ' + seconds + 's';
+            } else {
+                return seconds + 's';
+            }
+        }
+
+        function formatTokens(num) {
+            if (num >= 1000000000) return (num / 1000000000).toFixed(2) + 'B';
+            if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        function updateCountdowns() {
+            if (fiveHourResetTime) {
+                document.getElementById('reset-5h').textContent = formatCountdown(fiveHourResetTime);
+            }
+            if (weekResetTime) {
+                document.getElementById('reset-week').textContent = formatCountdown(weekResetTime);
+            }
+        }
+
+        function updateUI(data) {
+            if (!data.success) {
+                document.getElementById('status-indicator').className = 'status-indicator offline';
+                document.getElementById('status-text').textContent = 'SYSTEM OFFLINE';
+                return;
+            }
+
+            document.getElementById('status-indicator').className = 'status-indicator online';
+            document.getElementById('status-text').textContent = 'SYSTEM ONLINE';
+
+            var current = data.current;
+            var totals = data.totals || {};
+            var raw = data.raw || {};
+            
+            var fiveHourPct = totals.fiveHour > 0 ? (current.fiveHour / totals.fiveHour * 100) : 0;
+            var weekPct = totals.weekly > 0 ? (current.weekly / totals.weekly * 100) : 0;
+
+            document.getElementById('gauge-5h').textContent = Math.round(fiveHourPct) + '%';
+            document.getElementById('gauge-week').textContent = Math.round(weekPct) + '%';
+
+            var filled5h = (fiveHourPct / 100) * circumference;
+            var filledWeek = (weekPct / 100) * circumference;
+            
+            document.getElementById('gauge-ring-5h').setAttribute('stroke-dasharray', filled5h + ' ' + circumference);
+            document.getElementById('gauge-ring-week').setAttribute('stroke-dasharray', filledWeek + ' ' + circumference);
+
+            document.getElementById('bar-5h').style.width = Math.min(fiveHourPct, 100) + '%';
+            document.getElementById('bar-week').style.width = Math.min(weekPct, 100) + '%';
+
+            document.getElementById('pct-5h').textContent = raw.intervalRemainingPercent + '%';
+            document.getElementById('pct-week').textContent = raw.weeklyRemainingPercent + '%';
+
+            if (data.resets) {
+                fiveHourResetTime = new Date(data.resets.fiveHour);
+                weekResetTime = new Date(data.resets.week);
+            }
+
+            var date = new Date(data.timestamp);
+            document.getElementById('timestamp').textContent = 'LAST UPDATE: ' + date.toLocaleString('zh-CN');
+        }
+
+        function drawPieChart(modelStats) {
+            var total = Object.values(modelStats).reduce(function(a, b) { return a + b; }, 0);
+            if (total === 0) return;
+
+            var colors = ['#00ff88', '#00d4ff', '#ffaa00', '#ff4444', '#7c3aed', '#06b6d4', '#84cc16'];
+            var sortedModels = Object.entries(modelStats).sort(function(a, b) { return b[1] - a[1]; });
+            
+            var legendHtml = '';
+            sortedModels.forEach(function(entry, index) {
+                var model = entry[0];
+                var token = entry[1];
+                var percent = (token / total * 100).toFixed(1);
+                var color = colors[index % colors.length];
+                
+                legendHtml += '<div class="legend-item">';
+                legendHtml += '<div class="legend-color" style="background:' + color + ';color:' + color + '"></div>';
+                legendHtml += '<span class="legend-label">' + model + '</span>';
+                legendHtml += '<span class="legend-value">' + formatTokens(token) + '</span>';
+                legendHtml += '<span class="legend-percent">' + percent + '%</span>';
+                legendHtml += '</div>';
+            });
+            
+            document.getElementById('pie-legend').innerHTML = legendHtml;
+            document.getElementById('pie-center').innerHTML = 'TOTAL<br/>' + formatTokens(total);
+
+            var pieChart = document.getElementById('pie-chart');
+            var gradientParts = [];
+            var currentAngle = -90;
+            
+            sortedModels.forEach(function(entry, index) {
+                var token = entry[1];
+                var percent = token / total;
+                var angle = percent * 360;
+                var color = colors[index % colors.length];
+                
+                gradientParts.push(color + ' ' + currentAngle + 'deg ' + (currentAngle + angle) + 'deg');
+                currentAngle += angle;
+            });
+            
+            pieChart.style.background = 'conic-gradient(' + gradientParts.join(', ') + ')';
+        }
+
+        function fetchDetail() {
+            var btn = document.getElementById('refresh-detail');
+            btn.disabled = true;
+            btn.textContent = '[ LOADING... ]';
+            
+            fetch('/api/usage_detail')
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        document.getElementById('detail-daily-m3').textContent = formatTokens(data.current.daily);
+                        document.getElementById('detail-week-m3').textContent = formatTokens(data.current.weekly);
+                        document.getElementById('detail-month-m3').textContent = formatTokens(data.current.monthly);
+                        document.getElementById('detail-daily-all').textContent = formatTokens(data.all.daily);
+                        document.getElementById('detail-week-all').textContent = formatTokens(data.all.weekly);
+                        document.getElementById('detail-month-all').textContent = formatTokens(data.all.monthly);
+                        var latestText = data.latestDay ? ' DATA: ' + data.latestDay : '';
+                        latestText += data.monthStart ? ' | PERIOD: ' + data.monthStart : '';
+                        document.getElementById('detail-time').textContent = 'UPDATED: ' + new Date(data.timestamp).toLocaleString('zh-CN') + latestText;
+                        
+                        if (data.modelBreakdown) {
+                            drawPieChart(data.modelBreakdown);
+                        }
+                    } else {
+                        alert('ERROR: ' + (data.error || 'UNKNOWN'));
+                    }
+                    btn.disabled = false;
+                    btn.textContent = '[ REFRESH DATA ]';
+                })
+                .catch(function(error) {
+                    alert('CONNECTION ERROR: ' + error.message);
+                    btn.disabled = false;
+                    btn.textContent = '[ REFRESH DATA ]';
+                });
+        }
+
+        fetch('/api/usage')
+            .then(function(response) { return response.json(); })
+            .then(updateUI)
+            .catch(function(error) {
+                document.getElementById('status-indicator').className = 'status-indicator offline';
+                document.getElementById('status-text').textContent = 'CONNECTION FAILED';
+            });
+
+        setInterval(function() {
+            fetch('/api/usage')
+                .then(function(response) { return response.json(); })
+                .then(updateUI);
+        }, 10000);
+
+        setInterval(updateCountdowns, 1000);
+    </script>
+</body>
+</html>
