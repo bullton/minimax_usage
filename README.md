@@ -22,6 +22,18 @@ npm start
 
 访问 http://localhost:3000
 
+## 桌面Widget (Always-on-Top)
+
+可选的始终置顶小窗口，悬浮在桌面显示仪表盘。
+
+```bash
+cd always-on-top
+npm install
+npm start
+```
+
+需要先运行主服务器 `npm start`。
+
 ## API Keys
 
 需要配置以下环境变量：
