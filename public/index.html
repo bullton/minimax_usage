@@ -239,6 +239,30 @@
             margin-top: 20px;
             letter-spacing: 1px;
         }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .cockpit { padding: 20px; border-radius: 12px; }
+            h1 { font-size: 18px; letter-spacing: 4px; }
+            .gauges { gap: 40px; margin-bottom: 30px; }
+            .gauge { width: 140px; height: 140px; }
+            .gauge-title { top: 30px; font-size: 9px; }
+            .gauge-value { font-size: 28px; }
+            .gauge-unit { font-size: 10px; }
+            .gauge-reset { bottom: 30px; font-size: 10px; }
+            .gauge-svg { transform: scale(0.7); transform-origin: center; }
+            .detail-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .detail-item { flex-direction: column; gap: 5px; text-align: center; }
+            .pie-container { flex-direction: column; align-items: center; }
+            .pie-chart { width: 150px; height: 150px; }
+            .pie-center { width: 80px; height: 80px; font-size: 10px; }
+            .pie-legend { min-width: 100%; width: 100%; }
+            .refresh-btn { width: 100%; padding: 12px; }
+        }
+        @media (max-width: 480px) {
+            .gauges { flex-direction: column; align-items: center; gap: 20px; }
+            .gauge { width: 160px; height: 160px; }
+            .detail-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
